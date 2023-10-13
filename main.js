@@ -143,7 +143,7 @@ function learn(arrx, arry) {
   );
   instance.exports.learn(
     0.01,
-    1,
+    1000,
     iarrx.length,
     arrx_ptr,
     arry_ptr,

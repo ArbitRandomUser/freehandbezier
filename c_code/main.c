@@ -2,12 +2,14 @@
 #define cube(x) (x)*(x)*(x)
 #define sqr(x) (x)*(x)
 
+//enzyme activity definitions
 int enzyme_dup;
 int enzyme_dupnoneed;
 int enzyme_out;
 int enzyme_const;
+
+//bump allocater
 extern unsigned char __heap_base;
-extern void consoleLog(double val);
 unsigned int bump_pointer = (int)&__heap_base;
 void* malloc(int n) {
   unsigned int r = bump_pointer;
@@ -15,18 +17,23 @@ void* malloc(int n) {
   return (void *)r;
 }
 
+//resets bump pointer freeing all pointers
 void freeall() {
    bump_pointer = (int)&__heap_base;
 }
 
+//enzyme 
 extern void __enzyme_autodiff(void*, int, int, int ,double*, int, double*, int,double*, int,double*, double*, int, double*, double*);
 
 ftype bezier(ftype t, ftype p0, ftype p1, ftype p2,ftype p3){
   return cube(1.0-t)*p0 + 3.0*sqr(1.0-t)*t*p1 + 3.0*(1.0-t)*t*t*p2 + cube(t)*p3;
 }
-/*
- * ipx and ts have the same length
- */
+
+// ipx inner (excluding end points) x coordinates
+// ipy inner (excluding end points) y coordinates
+// ts , "t" values for the bezier curve 
+// ctrlp , control points of bezier curve 
+// endp , end points of bezier curve 
 double loss(int len, double * ipx, double *ipy,double *endp, double* ctrlp, double * ts){
   double ret=0.0;
   /* endpoints...
@@ -43,6 +50,7 @@ double loss(int len, double * ipx, double *ipy,double *endp, double* ctrlp, doub
   return ret;
 }
 
+//computes derivates w.r.t ctrlp, and ts and stores them in dctrlp and dts
 void dloss(int len,double *ipx,double *ipy, double *endp, double *ctrlp, double *dctrlp, double *ts, double *dts){
   __enzyme_autodiff((void *)loss, enzyme_const, len, enzyme_const, ipx, enzyme_const, ipy, enzyme_const, endp, enzyme_dup, ctrlp, dctrlp, enzyme_dup, ts, dts);
 }
@@ -58,7 +66,7 @@ void zerodts(double *dts,int len){
 }
 
 void zeroctrlp(double *dctrlp){
-  for(int i=0;i<4;i++){
+  for(int i=0;i<8;i++){
     dctrlp[i] = 0.0;
   }
 }
@@ -69,13 +77,12 @@ void update(double *arr, double *darr,int len,double alpha){
   }
 }
 
-void learn(double alpha_cp, int iter, int len, double *ipx,double *ipy,double *endp, double *ctrlp, double * ts){
-  //double *ts = (double *)malloc(len);
+void learn(double alpha_cp, int iter, int len, double *ipx,double *ipy,double *endp, double *ctrlp){
+  double *ts = (double *)malloc(len*8);
   double tot_dist = dist(endp[0],endp[1],ipx[0],ipy[0]);
   for(int i=0;i<len-1;i++){
     ts[i] = tot_dist;
     tot_dist = tot_dist + dist(ipx[i],ipy[i],ipx[i+1],ipy[i+1]);
-    //ts[i] = 0.0;
   }
   ts[len-1] = tot_dist;
   tot_dist = tot_dist + dist(ipx[len-1],ipy[len-1],endp[2],endp[3]); 
@@ -83,9 +90,9 @@ void learn(double alpha_cp, int iter, int len, double *ipx,double *ipy,double *e
     ts[i] = ts[i]/tot_dist;
   }
 
-  //zero out derivative stores
   double *dts = (double *)malloc(len*8);
-  double *dctrlp = (double *)malloc(len*8);
+  double *dctrlp = (double *)malloc(8*8);
+  //zero out derivative stores
   zerodts(dts,len);
   zeroctrlp(dctrlp);
 
@@ -93,10 +100,7 @@ void learn(double alpha_cp, int iter, int len, double *ipx,double *ipy,double *e
     zerodts(dts,len);
     zeroctrlp(dctrlp);
     dloss(len,ipx,ipy,endp,ctrlp,dctrlp,ts,dts);
-    //update(ts,dts,len,0.000001);
-    update(ctrlp,dctrlp,len,alpha_cp);
+    update(ts,dts,len,0.00001);
+    update(ctrlp,dctrlp,8,alpha_cp);
   }
-  //freeall();
 }
-
-

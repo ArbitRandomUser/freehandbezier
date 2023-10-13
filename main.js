@@ -1,4 +1,3 @@
-import javascriptLogo from "./javascript.svg";
 let  instance
 
 async function init() {
@@ -24,11 +23,28 @@ canvas.addEventListener("mousedown", function (e) {
   ctx.moveTo(e.x, e.y);
 });
 
+canvas.addEventListener("touchstart", function (e) {
+  e.preventDefault()
+  mousedown_init = true;
+  ctx.moveTo(e.touches[0].clientX, e.touches[0].clientY);
+});
+
 canvas.addEventListener("mousemove", function (e) {
+  e.preventDefault()
   if (mousedown_init) {
     ctx.lineTo(e.x, e.y);
     points_xvals.push(e.x);
     points_yvals.push(e.y);
+    ctx.stroke();
+  }
+});
+
+canvas.addEventListener("touchmove", function (e) {
+  e.preventDefault()
+  if (mousedown_init) {
+    ctx.lineTo(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    points_xvals.push(e.changedTouches[0].clientX);
+    points_yvals.push(e.changedTouches[0].clientY);
     ctx.stroke();
   }
 });
@@ -39,6 +55,19 @@ canvas.addEventListener("mouseup", function (e) {
   ctx.moveTo(e.x, e.y);
   let [ctrlp, endp] = learn(points_xvals, points_yvals);
   addpathtosvg(ctrlp, endp);
+  instance.exports.freeall();
+  points_xvals = [];
+  points_yvals = [];
+});
+
+canvas.addEventListener("touchend", function (e) {
+  e.preventDefault()
+  mousedown_init = false;
+  ctx.stroke();
+  ctx.moveTo(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+  let [ctrlp, endp] = learn(points_xvals, points_yvals);
+  addpathtosvg(ctrlp, endp);
+  instance.exports.freeall();
   points_xvals = [];
   points_yvals = [];
 });
@@ -46,6 +75,12 @@ canvas.addEventListener("mouseup", function (e) {
 canvas.addEventListener("mouseleave", function (e) {
   mousedown_init = false;
 });
+
+canvas.addEventListener("touchcancel", function (e) {
+  e.preventDefault()
+  mousedown_init = false;
+});
+
 
 function make_wasm_double_array(len) {
   const ptr = instance.exports.malloc(len * 8);
@@ -65,7 +100,7 @@ function learn(arrx, arry) {
   const [arry_ptr, arry_arr] = make_wasm_double_array(iarry.length);
   arry_arr.set(iarry);
 
-  const [endp_ptr, endp_arr] = make_wasm_double_array(4);
+  const [endp_ptr, endp_arr] = make_wasm_double_array(8);
   endp_arr.set([
     arrx[0],
     arry[0],
@@ -73,54 +108,33 @@ function learn(arrx, arry) {
     arry[arry.length - 1],
   ]);
 
-  const [ctrlp_ptr, ctrlp_arr] = make_wasm_double_array(4);
+  const [ctrlp_ptr, ctrlp_arr] = make_wasm_double_array(8);
   let endp = endp_arr;
   ctrlp_arr.set([
     endp[0] * (1 / 3) + endp[2] * (2 / 3),
     endp[1] * (1 / 3) + endp[3] * (2 / 3),
-    endp[1] * (1 / 3) + endp[3] * (2 / 3),
-    endp[1] * (1 / 3) + endp[3] * (2 / 3),
+    endp[0] * (2 / 3) + endp[2] * (1 / 3),
+    endp[1] * (2 / 3) + endp[3] * (1 / 3),
   ]);
-
-  const [dctrlp_ptr, dctrlp_arr] = make_wasm_double_array(ctrlp_arr.length);
-  dctrlp_arr.fill(0.0);
-
-  const [ts_ptr, ts_arr] = make_wasm_double_array(iarrx.length);
-  ts_arr.fill(0);
-
-  const [dts_ptr, dts_arr] = make_wasm_double_array(iarrx.length);
-  dts_arr.fill(0);
 
   //learn thrice 2000 ietrations, decreasing learning rate
   instance.exports.learn(
     0.1,
-    2000,
+    1000,
     iarrx.length,
     arrx_ptr,
     arry_ptr,
     endp_ptr,
     ctrlp_ptr,
-    ts_ptr,
   );
   instance.exports.learn(
     0.01,
-    1000,
+    1,
     iarrx.length,
     arrx_ptr,
     arry_ptr,
     endp_ptr,
     ctrlp_ptr,
-    ts_ptr,
-  );
-  instance.exports.learn(
-    0.001,
-    1000,
-    iarrx.length,
-    arrx_ptr,
-    arry_ptr,
-    endp_ptr,
-    ctrlp_ptr,
-    ts_ptr,
   );
   return [ctrlp_arr, endp_arr];
 }

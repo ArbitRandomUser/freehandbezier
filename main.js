@@ -11,12 +11,26 @@ init();
 const canvas = document.getElementById("mycanvas");
 const svg = document.getElementById("mysvg");
 const ctx = canvas.getContext("2d");
+const refreshcanvbutton = document.getElementById("refreshcanvas")
+const refreshsvgbutton = document.getElementById("refreshsvg")
 ctx.fillStyle = "#55555520";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 ctx.fillStyle = "black";
 var mousedown_init = false;
 var points_xvals = [];
 var points_yvals = [];
+
+refreshcanvbutton.addEventListener("mousedown", function(e){
+  ctx.fillStyle = "#55555520";
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+})
+
+refreshsvgbutton.addEventListener("mousedown", function(e){
+  svg.innerHTML=''
+})
 
 canvas.addEventListener("mousedown", function (e) {
   mousedown_init = true;

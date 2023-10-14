@@ -1,6 +1,6 @@
 # freehandbezier
 
-fit hand drawn curves to a  cubic bezier 
+fit hand drawn curves in the browser canvas to a  cubic bezier (which gets rendered over it on an svg)
 
 if you wish to tweak this you will need, clang , wasm-ld , enzyme to build the `public/outf.wasm`
 
